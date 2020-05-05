@@ -1,0 +1,11 @@
+#Não adicionar diretórios
+codes/
+*/casos/
+*/bin/
+*/pdf/
+# Não adicionar tipo de arquivos
+*.pdf
+#Não adicionar arquivos compactados
+*.zip
+*.7z
+*.tar.gz
