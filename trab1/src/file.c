@@ -9,21 +9,21 @@ struct header
 	int numeroRegistrosInseridos;
 	int numeroRegistrosRemovidos;
 	int numeroRegistrosAtualizados;
-	char *lixo;
+	char lixo[112];
 };
 
 struct registro
 {
 	int tamanhoCidadeMae;
 	int tamanhoCidadeBebe;
-	char *cidadeMae;
-	char *cidadeBebe;
+	char cidadeMae[105];
+	char cidadeBebe[105];
 	int idNascimento;
 	int idadeMae;
-	char dataNascimento[10];
+	char dataNascimento[11];
 	char sexoBebe;
-	char estadoMae[2];
-	char estadoBebe[2];
+	char estadoMae[3];
+	char estadoBebe[3];
 };
 
 FILE *csv_open(char *file_name)
@@ -33,13 +33,28 @@ FILE *csv_open(char *file_name)
 	return file;
 }
 
-HEADER *csv_read(FILE *file)
+HEADER *create_header()
 {
-	char *line_buffer;
-	line_buffer = (char *) malloc(MAX_LINE, sizeof(char));
-	memset(line_buffer, "$", MAX_LINE);
-	//TODO
-	//Needs to know how to read a single file of .csv
-	//fgets(line_buffer, MAX_LINE, file);
-	return SUCCESS;
+	HEADER *header;
+	//Set as 0 all the camps of the struct
+	header = (HEADER *) calloc(1, sizeof(HEADER));
+	memset(header->lixo, '$', 111);
+	header->lixo[111] = '\0'
+	return header;
+}
+
+REGISTRO *csv_read(FILE *file, HEADER *header)
+{
+	//+1 to add '\0'
+	char buffer[MAX_LEN + 1];
+	//Field thats is going go be stored;
+	char *str;
+	//Saveptr
+	char *rest = str;
+	while(fgets(buffer, MAX_LEN, file))
+	{
+		while((token = strtok_r(rest, ",", &rest)))
+		{
+		}
+	}
 }
