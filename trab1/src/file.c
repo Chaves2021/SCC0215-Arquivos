@@ -98,16 +98,13 @@ REGISTRO *store_struct(char *buffer)
 	sscanf(buffer + len, " %s", str);
 	strcpy(reg->estadoBebe, str);
 	len += strlen(str) + 1;
-
 	return reg;
 }
 
-int write_binary(REGISTRO *reg, char *bin_filename)
+FILE *write_binary(REGISTRO *reg, FILE *file)
 {
 	//Calculates what was not ocuppied to write "$"
 	int len = 105 - (8 + reg->tamanhoCidadeMae + reg->tamanhoCidadeBebe);
-	FILE *file;
-	file = fopen(filename, "ab");
 
 	fwrite(&reg->tamanhoCidadeMae, sizeof(int), 1, file);
 	fwrite(&reg->tamanhoCidadeBebe, sizeof(int), 1, file);
@@ -120,23 +117,43 @@ int write_binary(REGISTRO *reg, char *bin_filename)
 	fwrite(&reg->sexoBebe, sizeof(char), 1, file);
 	fwrite(reg->estadoMae, sizeof(char), 2, file);
 	fwrite(reg->estadoBebe, sizeof(char), 2, file);
-	
 	return SUCCESS;
 }
 
-int csv2binary(FILE *file, HEADER *header, char *bin_filename)
+//Write the header of the binary file
+int write_binary_header(HEADER *header, FILE *file)
+{
+	//Go to the start of the file to write the header
+	fseek(file, 0, SEEK_SET);
+
+	fwrite(&header->status, sizeof(char), 1, file);
+	fwrite(&header->RRNproxRegistro, sizeof(int), 1, file);
+	fwrite(&header->numeroRegistrosInseridos, sizeof(int), 1, file);
+	fwrite(&header->numeroRegistrosRemovidos, sizeof(int), 1, file);
+	fwrite(&header->numeroRegistrosAtualizados, sizeof(int), 1, file);
+	fwrite(header->lixo, sizeof(char), 111, file);
+	return SUCCESS;
+}
+
+int csv2binary(FILE *csv_file, HEADER *header, char *bin_filename)
 {
 	if(!file) return FILE_BROKEN;
+	FILE *bin_file;
+	bin_file = fopen(bin_filename, "wb");
+
 	REGISTRO *registro;
 	char buffer[MAX_LEN];
 	//While there is something to read
-	while(fgets(buffer, MAX_LEN, file))
+	while(fgets(buffer, MAX_LEN, csv_file))
 	{
 		registro = store_struct(buffer);
-		write_binary(registro, bin_filename);
+		write_binary(registro, bin_file);
 		header->numeroRegistrosInseridos++;
 	}
 	header->status = OK;
 	header->RRNproxRegistro = header->numeroRegistrosInseridos;
+	write_binary_header(header, bin_file);
+
+	fclose(bin_file);
 	return SUCCESS;
 }
