@@ -177,7 +177,6 @@ HEADER *header_read(FILE *file)
 	fread(&header->numeroRegistrosInseridos, sizeof(int), 1, file);
 	fread(&header->numeroRegistrosRemovidos, sizeof(int), 1, file);
 	fread(&header->numeroRegistrosAtualizados, sizeof(int), 1, file);
-	fread(&header->numeroRegistrosAtualizados, sizeof(int), 1, file);
 	fread(header->lixo, sizeof(char), 111, file);
 	header->lixo[111] = '\0';
 	return header;
@@ -190,12 +189,16 @@ REGISTRO *register_read(FILE *file)
 	REGISTRO *reg;
 	reg = (REGISTRO *) malloc(sizeof(REGISTRO));
 
+	char lixo[105];
+	memset(lixo, '\0', 105);
+
 	fread(&reg->tamanhoCidadeMae, sizeof(int), 1, file);
 	fread(&reg->tamanhoCidadeBebe, sizeof(int), 1, file);
 	memset(reg->cidadeMae, '\0', 105);
 	fread(reg->cidadeMae, reg->tamanhoCidadeMae, 1, file);
 	memset(reg->cidadeBebe, '\0', 105);
 	fread(reg->cidadeBebe, reg->tamanhoCidadeBebe, 1, file);
+	fread(lixo, 105 -(8 + reg->tamanhoCidadeBebe + reg->tamanhoCidadeMae), 1, file);
 	fread(&reg->idNascimento, sizeof(int), 1, file);
 	fread(&reg->idadeMae, sizeof(int), 1, file);
 	memset(reg->dataNascimento, '\0', 11);
@@ -212,14 +215,14 @@ REGISTRO *register_read(FILE *file)
 int register_print(REGISTRO *reg)
 {
 	printf("Nasceu em ");
-	if(reg->tamanhoCidadeBebe > 0) printf("%s/ ", reg->cidadeBebe);
+	if(reg->tamanhoCidadeBebe > 0) printf("%s/", reg->cidadeBebe);
 	else printf("-/");
 
-	if(strlen(reg->estadoBebe) > 0) printf("%s,", reg->estadoBebe);
+	if(strlen(reg->estadoBebe) > 0) printf("%s, ", reg->estadoBebe);
 	else printf("-, ");
 
 	printf("em ");
-	if(strlen(reg->dataNascimento) > 0) printf("%s,", reg->dataNascimento);
+	if(strlen(reg->dataNascimento) > 0) printf("%s, ", reg->dataNascimento);
 	else printf("-, ");
 
 	printf("um bebê de sexo ");
