@@ -5,6 +5,7 @@ codes/
 */pdf/
 # Não adicionar tipo de arquivos
 *.pdf
+*.bin
 #Não adicionar arquivos compactados
 *.zip
 *.7z
