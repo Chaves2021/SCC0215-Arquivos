@@ -4,4 +4,7 @@
 #define MAX_LEN		138
 #define FILE_BROKEN	 -1
 #define OK		 '1'
-#define INCONSISTENTE	  0
+#define INCONSISTENTE	 '0'
+
+#define	TRUE		  1
+#define	FALSE		  0
