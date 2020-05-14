@@ -66,11 +66,10 @@ REGISTRO *store_struct(char *buffer)
 	strcpy(reg->cidadeBebe, str);
 	reg->tamanhoCidadeBebe = strlen(str);
 	len += strlen(str) + 1;
-	//Reads idNascimento, and store it if exists, or store -1 if not
+	//Reads idNascimento, and store it
 	memset(str, '\0', MAX_LEN);
 	sscanf(buffer + len, " %[^,]", str);
-	if(strlen(str) > 0) reg->idNascimento = atoi(str);
-	else reg->idNascimento = -1;
+	reg->idNascimento = atoi(str);
 	len += strlen(str) + 1;
 	//Reads idadeMae, and store it if exists, or store -1 if not
 	memset(str, '\0', MAX_LEN);
@@ -113,6 +112,9 @@ FILE *write_binary(REGISTRO *reg, FILE *file)
 	fwrite(&reg->tamanhoCidadeBebe, sizeof(int), 1, file);
 	fwrite(reg->cidadeMae, sizeof(char), reg->tamanhoCidadeMae, file);
 	fwrite(reg->cidadeBebe, sizeof(char), reg->tamanhoCidadeBebe, file);
+	//I don't know why "fwrite("$", sizeof(char), len, file);" was not working
+	//It was giving an undefined behavior 
+	//This method worked so I used it
 	while(len--) fwrite("$", sizeof(char), 1, file);
 	fwrite(&reg->idNascimento, sizeof(int), 1, file);
 	fwrite(&reg->idadeMae, sizeof(int), 1, file);
@@ -126,8 +128,6 @@ FILE *write_binary(REGISTRO *reg, FILE *file)
 //Write the header of the binary file
 int write_binary_header(HEADER *header, FILE *file)
 {
-	//Go to the start of the file to write the header
-	fseek(file, 0, SEEK_SET);
 
 	fwrite(&header->status, sizeof(char), 1, file);
 	fwrite(&header->RRNproxRegistro, sizeof(int), 1, file);
@@ -147,12 +147,15 @@ int csv2binary(FILE *csv_file, HEADER *header, char *bin_filename)
 
 	REGISTRO *registro;
 	char buffer[MAX_LEN];
+	//Flag to say if the register points to some memory space or not
+	int isAllocated = FALSE;
 	//Ignores the first line
 	fgets(buffer, MAX_LEN, csv_file);
-	//Pass the first 128 bytes to write the header after
+	//Skips the first 128 bytes to write the header after
 	fseek(bin_file, 128, SEEK_SET);
-	//While there is something to read
-	while(fgets(buffer, MAX_LEN, csv_file))
+	//If there is something to read, flag receives true
+	//If fgets fails at first attempt, flag continues false
+	while(fgets(buffer, MAX_LEN, csv_file) && (isAllocated = TRUE))
 	{
 		registro = store_struct(buffer);
 		write_binary(registro, bin_file);
@@ -160,9 +163,14 @@ int csv2binary(FILE *csv_file, HEADER *header, char *bin_filename)
 	}
 	header->status = OK;
 	header->RRNproxRegistro = header->numeroRegistrosInseridos;
+	//Return to the beggining of the file to write the header
 	fseek(bin_file, 0, SEEK_SET);
 	write_binary_header(header, bin_file);
 
+	//The header is always created in main, so i can free it without check
+	free(header);
+	//If the file is null, register not points to anything, so free gives error
+	if(isAllocated) free(registro);
 	fclose(bin_file);
 	return SUCCESS;
 }
@@ -241,7 +249,7 @@ int bin_print(char *bin_filename)
 	FILE *bin_file = fopen(bin_filename, "rb");
 	if(!bin_file) return FILE_BROKEN;
 	fread(&status, sizeof(char), 1, bin_file);
-	if(status == '0') return FILE_BROKEN;
+	if(status == INCONSISTENTE) return FILE_BROKEN;
 	//Put the pointer back to the start of the file
 	fseek(bin_file, 0, SEEK_SET);
 
@@ -255,6 +263,8 @@ int bin_print(char *bin_filename)
 		register_print(reg);
 	}
 
+	free(header);
+	free(reg);
 	fclose(bin_file);
 	return SUCCESS;
 }
