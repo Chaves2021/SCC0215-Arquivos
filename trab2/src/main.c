@@ -37,7 +37,7 @@ int main(void)
 			scanf(" %s", bin_filename);
 			int ret = bin_search_print(bin_filename);
 			if(ret == FILE_BROKEN) printf("Falha no processamento do arquivo\n");
-			else if(ret == NO_REGISTER) printf("Registro inexistente\n");
+			else if(ret == NO_REGISTER) printf("Registro Inexistente.\n");
 		default:
 			break;
 	}

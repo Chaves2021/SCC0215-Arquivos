@@ -285,15 +285,21 @@ int bin_print(char *bin_filename)
 	HEADER *header = header_read(bin_file);
 	REGISTRO *reg;
 
-	//While there is registers to print
-	while(header->numeroRegistrosInseridos--)
+	if(header->numeroRegistrosInseridos)
 	{
-		reg = register_read(bin_file);
-		register_print(reg);
-	}
 
-	free(header);
-	free(reg);
+		//While there is registers to print
+		while(header->numeroRegistrosInseridos--)
+		{
+			reg = register_read(bin_file);
+			register_print(reg);
+		}
+
+		free(header);
+		free(reg);
+	}
+	else printf("Registro Inexistente.\n");
+
 	fclose(bin_file);
 	return SUCCESS;
 }
@@ -337,7 +343,7 @@ int isMatch(COMBINED_ELEM *ce, REGISTRO *reg)
 	}
 	if(!strcmp("sexoBebe", ce->field_name))
 	{
-		if(ce->value.string_value == reg->sexoBebe)
+		if(ce->value.string_value[0] == reg->sexoBebe)
 			return TRUE;
 		else
 			return FALSE;
@@ -377,7 +383,7 @@ REGISTRO **register_find(COMBINED_HEADER *ch, FILE *bin_file, HEADER *header)
 			{
 				flag = isMatch(ch->elem_list[i], reg);
 			}
-			if(i == ch->n_fields)
+			if(flag)
 			{
 				reg_list = (REGISTRO **) realloc(reg_list, ++n_registers_found * sizeof(REGISTRO *));
 				reg_list[n_registers_found - 1] = reg;
@@ -424,7 +430,10 @@ int bin_search_print(char *bin_filename)
 	}
 
 	reg_list = register_find(ch, bin_file, header);
-	for(i = 0; reg_list; i++) register_print(reg_list[i]);
+	if(reg_list)
+		for(i = 0; reg_list[i]; i++) register_print(reg_list[i]);
+	else
+		printf("Registro Inexistente.\n");
 
 	return SUCCESS;
 }
