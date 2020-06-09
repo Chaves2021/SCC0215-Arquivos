@@ -256,15 +256,20 @@ int bin_print(char *bin_filename)
 	HEADER *header = header_read(bin_file);
 	REGISTRO *reg;
 
-	//While there is registers to print
-	while(header->numeroRegistrosInseridos--)
+	if(header->numeroRegistrosInseridos)
 	{
-		reg = register_read(bin_file);
-		register_print(reg);
-	}
 
-	free(header);
-	free(reg);
+		//While there is registers to print
+		while(header->numeroRegistrosInseridos--)
+		{
+			reg = register_read(bin_file);
+			register_print(reg);
+		}
+
+		free(header);
+		free(reg);
+	}
+	else printf("Registro inexistente.\n");
 	fclose(bin_file);
 	return SUCCESS;
 }
