@@ -16,5 +16,7 @@ int csv2binary(FILE *, HEADER *, char *);
 int bin_print(char *bin_filename);
 //TODO
 int bin_search_print(char *);
+//TODO
+int bin_search_rrn(char *);
 
 #endif

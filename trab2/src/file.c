@@ -231,6 +231,7 @@ REGISTRO *register_read(FILE *file)
 
 	fread(&reg->tamanhoCidadeMae, sizeof(int), 1, file);
 	fread(&reg->tamanhoCidadeBebe, sizeof(int), 1, file);
+	if(reg->tamanhoCidadeMae == REMOVED) return reg;
 	memset(reg->cidadeMae, '\0', 105);
 	fread(reg->cidadeMae, reg->tamanhoCidadeMae, 1, file);
 	memset(reg->cidadeBebe, '\0', 105);
@@ -406,7 +407,6 @@ int bin_search_print(char *bin_filename)
 
 	int n_fields;
 	int i;
-	//char aux[105];
 	REGISTRO **reg_list;
 	COMBINED_HEADER *ch;
 
@@ -419,8 +419,6 @@ int bin_search_print(char *bin_filename)
 		if(!strcmp("idadeMae", ch->elem_list[i]->field_name) || 
 				!strcmp("idNascimento", ch->elem_list[i]->field_name))
 		{
-			//scanf(" %s", aux);
-			//ch->elem_list[i]->value.int_value = atoi(aux);
 			scanf("%d", &(ch->elem_list[i]->value.int_value));
 		}
 		else
@@ -435,5 +433,33 @@ int bin_search_print(char *bin_filename)
 	else
 		printf("Registro Inexistente.\n");
 
+	fclose(bin_file);
+	return SUCCESS;
+}
+
+int bin_search_rrn(char *bin_filename)
+{
+	FILE *bin_file = fopen(bin_filename, "rb");
+	//Check if file is broken
+	if(!bin_file) return FILE_BROKEN;
+	HEADER *header = header_read(bin_file);
+	//Check if status is ok
+	if(header->status == INCONSISTENTE) return FILE_BROKEN;
+	//Check if there is a valid register
+	if(!header->numeroRegistrosInseridos) return NO_REGISTER;
+
+	int rrn;
+	REGISTRO *reg;
+	scanf("%d", &rrn);
+
+	if(rrn < 0 || rrn > header->RRNproxRegistro) return NO_REGISTER;
+	else
+	{
+		//Pass the header
+		fseek(bin_file, 128 * (rrn + 1), SEEK_SET);
+		reg = register_read(bin_file);
+		if(reg->tamanhoCidadeMae == REMOVED) return NO_REGISTER;
+		else register_print(reg);
+	}
 	return SUCCESS;
 }

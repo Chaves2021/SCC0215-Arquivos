@@ -14,6 +14,7 @@ int main(void)
 	char bin_filename[50];
 	FILE *csv_file;
 	int opt; //Variable to store the option by the user
+	int ret;
 	//Reads the option
 	scanf("%d", &opt);
 	switch(opt)
@@ -35,9 +36,16 @@ int main(void)
 			break;
 		case 3:
 			scanf(" %s", bin_filename);
-			int ret = bin_search_print(bin_filename);
+			ret = bin_search_print(bin_filename);
 			if(ret == FILE_BROKEN) printf("Falha no processamento do arquivo\n");
 			else if(ret == NO_REGISTER) printf("Registro Inexistente.\n");
+			break;
+		case 4:
+			scanf(" %s", bin_filename);
+			ret = bin_search_rrn(bin_filename);
+			if(ret == FILE_BROKEN) printf("Falha no processamento do arquivo\n");
+			else if(ret == NO_REGISTER) printf("Registro Inexistente.\n");
+			break;
 		default:
 			break;
 	}
