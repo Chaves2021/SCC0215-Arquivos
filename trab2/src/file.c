@@ -410,6 +410,14 @@ COMBINED_HEADER *combined_search_fill(COMBINED_HEADER *ch, int n_fields)
 	return ch;
 }
 
+int combined_search_free(COMBINED_HEADER **ch)
+{
+	for(int i = 0; i < (*ch)->n_fields; i++) free((*ch)->elem_list[i]);
+	free((*ch)->elem_list);
+	free(*ch);
+	return SUCCESS;
+}
+
 int bin_search_print(char *bin_filename)
 {
 	FILE *bin_file = fopen(bin_filename, "rb");
@@ -444,6 +452,9 @@ int bin_search_print(char *bin_filename)
 	if(!found) printf("Registro Inexistente.\n");
 
 	fclose(bin_file);
+	free(header);
+	free(reg);
+	combined_search_free(&ch);
 	return SUCCESS;
 }
 
@@ -472,9 +483,12 @@ int bin_search_rrn(char *bin_filename)
 		else register_print(reg);
 	}
 	fclose(bin_file);
+	free(header);
+	free(reg);
 	return SUCCESS;
 }
 
+//I don't know why this function is not working, the debug message is not conclusive and i don't know how to fix it :(
 int bin_remove(char *bin_filename)
 {
 	FILE *bin_file = fopen(bin_filename, "rb+");
@@ -529,7 +543,11 @@ int bin_remove(char *bin_filename)
 	//Return to the beggining of the file to write the header
 	fseek(bin_file, 0, SEEK_SET);
 	write_binary_header(header, bin_file);
+
 	fclose(bin_file);
+	free(header);
+	free(reg);
+	combined_search_free(&ch);
 
 	return SUCCESS;
 }
@@ -609,11 +627,16 @@ int bin_insert(char *bin_filename)
 	//Return to the beggining of the file to write the header
 	fseek(bin_file, 0, SEEK_SET);
 	write_binary_header(header, bin_file);
+
 	fclose(bin_file);
+	free(header);
+	free(reg);
 
 	return SUCCESS;
 }
 
+//This function update the register fields comparing field_name with all fields
+//and after updating all reg fields, write in the bin file
 int register_update(REGISTRO *reg, COMBINED_HEADER *ch, FILE *file)
 {
 	int i = 0;
@@ -624,36 +647,36 @@ int register_update(REGISTRO *reg, COMBINED_HEADER *ch, FILE *file)
 			strcpy(reg->cidadeMae, ch->elem_list[i]->value.string_value);
 			reg->tamanhoCidadeMae = strlen(reg->cidadeMae);
 		}
-		if(!strcmp("cidadeBebe", ch->elem_list[i]->field_name))
+		else if(!strcmp("cidadeBebe", ch->elem_list[i]->field_name))
 		{
 			strcpy(reg->cidadeBebe, ch->elem_list[i]->value.string_value);
 			reg->tamanhoCidadeBebe = strlen(reg->cidadeBebe);
 		}
-		if(!strcmp("idNascimento", ch->elem_list[i]->field_name))
+		else if(!strcmp("idNascimento", ch->elem_list[i]->field_name))
 		{
 			reg->idNascimento = ch->elem_list[i]->value.int_value;
 		}
-		if(!strcmp("idadeMae", ch->elem_list[i]->field_name))
+		else if(!strcmp("idadeMae", ch->elem_list[i]->field_name))
 		{
 			if(ch->elem_list[i]->value.int_value == 0) reg->idadeMae = -1;
 			else reg->idadeMae = ch->elem_list[i]->value.int_value;
 		}
-		if(!strcmp("dataNascimento", ch->elem_list[i]->field_name))
+		else if(!strcmp("dataNascimento", ch->elem_list[i]->field_name))
 		{
 			if(strlen(ch->elem_list[i]->value.string_value) > 0) strcpy(reg->dataNascimento, ch->elem_list[i]->value.string_value);
 			else reg->dataNascimento[0] = '\0';
 		}
-		if(!strcmp("sexoBebe", ch->elem_list[i]->field_name))
+		else if(!strcmp("sexoBebe", ch->elem_list[i]->field_name))
 		{
 			if(strlen(ch->elem_list[i]->value.string_value) > 0) reg->sexoBebe = ch->elem_list[i]->value.string_value[0];
 			else reg->sexoBebe = '0';
 		}
-		if(!strcmp("estadoMae", ch->elem_list[i]->field_name))
+		else if(!strcmp("estadoMae", ch->elem_list[i]->field_name))
 		{
 			if(strlen(ch->elem_list[i]->value.string_value) > 0) strcpy(reg->estadoMae, ch->elem_list[i]->value.string_value);
 			else reg->estadoMae[0] = '\0';
 		}
-		if(!strcmp("estadoBebe", ch->elem_list[i]->field_name))
+		else if(!strcmp("estadoBebe", ch->elem_list[i]->field_name))
 		{
 			if(strlen(ch->elem_list[i]->value.string_value) > 0) strcpy(reg->estadoBebe, ch->elem_list[i]->value.string_value);
 			else reg->estadoBebe[0] = '\0';
@@ -724,7 +747,11 @@ int bin_update(char *bin_filename)
 	//Return to the beggining of the file to write the header
 	fseek(bin_file, 0, SEEK_SET);
 	write_binary_header(header, bin_file);
+
 	fclose(bin_file);
+	free(header);
+	free(reg);
+	combined_search_free(&ch);
 
 	return SUCCESS;
 }
