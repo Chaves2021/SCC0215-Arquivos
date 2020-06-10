@@ -51,6 +51,18 @@ int main(void)
 			if(bin_remove(bin_filename) == SUCCESS) binarioNaTela(bin_filename);
 			else printf("Falha no processamento do arquivo.\n");
 			break;
+		case 6:
+			scanf(" %s", bin_filename);
+			ret = bin_insert(bin_filename);
+			if(ret != SUCCESS) printf("Falha no processamento do arquivo.\n");
+			else binarioNaTela(bin_filename);
+			break;
+		case 7:
+			scanf(" %s", bin_filename);
+			ret = bin_update(bin_filename);
+			if(ret != SUCCESS) printf("Falha no processamento do arquivo.\n");
+			else binarioNaTela(bin_filename);
+			break;
 		default:
 			break;
 	}

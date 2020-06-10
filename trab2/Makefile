@@ -3,12 +3,12 @@ BINARY=./bin/main
 INCLUDES=./includes/
 SRC=./src/binarioNaTela.c ./src/file.c ./src/main.c
 OPTIONS=-Wall -g -lm
-TEST=./casos/12.in
+TEST=./casos/19.in
 
 all:
 	@$(CC) $(SRC) -o $(BINARY) -I$(INCLUDES)
 run:
-	@$(BINARY) < $(TEST)
+	@$(BINARY) #< $(TEST)
 clean:
 	rm trab.zip
 	rm ./bin/*

@@ -29,6 +29,7 @@ struct registro
 	char estadoBebe[3];
 };
 
+//Struct element to store the name and value of the field that is going to be used in comparison
 struct combined_search_elem
 {
 	char field_name[105];
@@ -40,12 +41,14 @@ struct combined_search_elem
 
 };
 
+//Struct header that contains how many fields are going to be used in the combined search, and a list of them as elements
 struct combined_search_header
 {
 	COMBINED_ELEM **elem_list;
 	int n_fields;
 };
 
+//Function to allocate memory to combined_header vars 
 COMBINED_HEADER *combined_search_create(int n_fields)
 {
 	int i;
@@ -230,8 +233,8 @@ REGISTRO *register_read(FILE *file)
 	memset(lixo, '\0', 105);
 
 	fread(&reg->tamanhoCidadeMae, sizeof(int), 1, file);
-	fread(&reg->tamanhoCidadeBebe, sizeof(int), 1, file);
 	if(reg->tamanhoCidadeMae == REMOVED) return NULL;
+	fread(&reg->tamanhoCidadeBebe, sizeof(int), 1, file);
 	memset(reg->cidadeMae, '\0', 105);
 	fread(reg->cidadeMae, reg->tamanhoCidadeMae, 1, file);
 	memset(reg->cidadeBebe, '\0', 105);
@@ -305,6 +308,7 @@ int bin_print(char *bin_filename)
 	return SUCCESS;
 }
 
+//Function to see compare the register field and the field in the search 
 int isMatch(COMBINED_ELEM *ce, REGISTRO *reg)
 {
 	if(!strcmp("cidadeMae", ce->field_name))
@@ -366,40 +370,44 @@ int isMatch(COMBINED_ELEM *ce, REGISTRO *reg)
 	return FALSE;
 }
 
-REGISTRO **register_find(COMBINED_HEADER *ch, FILE *bin_file, HEADER *header, int **rrn_list)
+//Function to search with ch already filled and returns a register that matches with the conditions
+//Or returns NULL to say that the register does not match
+REGISTRO *combined_search_register(COMBINED_HEADER *ch, FILE *bin_file)
 {
-	int flag;
+	int found;
 	int i;
-	int rrn_counter = 0, counter = 0;
-	int n_registers_found = 0;
-	REGISTRO **reg_list = NULL;
 	REGISTRO *reg;
-	int aux = header->numeroRegistrosInseridos;
-
-	while(aux--)
+	reg = register_read(bin_file);
+	if(reg)
 	{
-		reg = register_read(bin_file);
-		if(reg)
+		found = TRUE;
+		for(i  = 0; i < ch->n_fields && found; i++) found = isMatch(ch->elem_list[i], reg);
+		if(found)
 		{
-			flag = TRUE;
-			for(i  = 0; i < ch->n_fields && flag; i++)
-			{
-				flag = isMatch(ch->elem_list[i], reg);
-			}
-			if(flag)
-			{
-				reg_list = (REGISTRO **) realloc(reg_list, ++n_registers_found * sizeof(REGISTRO *));
-				reg_list[n_registers_found - 1] = reg;
-				if(rrn_list)
-				{
-					rrn_list[0] = (int *) realloc(rrn_list[0], ++counter * sizeof(int));
-					rrn_list[0][counter - 1] = rrn_counter;
-				}
-			}
-			rrn_counter++;
+			return reg;
 		}
 	}
-	return reg_list;
+	return NULL;
+}
+
+//Function to store the fields of the combined search in the struct
+COMBINED_HEADER *combined_search_fill(COMBINED_HEADER *ch, int n_fields)
+{
+	int i;
+	for(i = 0; i < n_fields; i++)
+	{
+		scanf(" %s", ch->elem_list[i]->field_name);
+		if(!strcmp("idadeMae", ch->elem_list[i]->field_name) || 
+				!strcmp("idNascimento", ch->elem_list[i]->field_name))
+		{
+			scanf("%d", &(ch->elem_list[i]->value.int_value));
+		}
+		else
+		{
+			scan_quote_string(ch->elem_list[i]->value.string_value);
+		}
+	}
+	return ch;
 }
 
 int bin_search_print(char *bin_filename)
@@ -414,35 +422,26 @@ int bin_search_print(char *bin_filename)
 	if(!header->numeroRegistrosInseridos) return NO_REGISTER;
 
 	int n_fields;
-	int i;
-	REGISTRO **reg_list = NULL;
+	//Flag to say if found at least 1 one register that matches
+	int found = FALSE;
+	int aux = header->numeroRegistrosInseridos;
 	COMBINED_HEADER *ch;
+	REGISTRO *reg;
 
 	scanf("%d", &n_fields);
 	ch = combined_search_create(n_fields);
+	ch = combined_search_fill(ch, n_fields);
 
-	for(i = 0; i < n_fields; i++)
+	while(aux--)
 	{
-		scanf(" %s", ch->elem_list[i]->field_name);
-		if(!strcmp("idadeMae", ch->elem_list[i]->field_name) || 
-				!strcmp("idNascimento", ch->elem_list[i]->field_name))
+		reg = combined_search_register(ch, bin_file);
+		if(reg) 
 		{
-			scanf("%d", &(ch->elem_list[i]->value.int_value));
-		}
-		else
-		{
-			scan_quote_string(ch->elem_list[i]->value.string_value);
+			found = TRUE;
+			register_print(reg);
 		}
 	}
-
-	reg_list = register_find(ch, bin_file, header, NULL);
-	if(reg_list)
-		for(i = 0; reg_list[i]; i++) 
-		{
-			register_print(reg_list[i]);
-		}
-	else
-		printf("Registro Inexistente.\n");
+	if(!found) printf("Registro Inexistente.\n");
 
 	fclose(bin_file);
 	return SUCCESS;
@@ -463,8 +462,7 @@ int bin_search_rrn(char *bin_filename)
 	REGISTRO *reg;
 	scanf("%d", &rrn);
 
-	if(rrn < 0 || rrn > header->RRNproxRegistro) return NO_REGISTER;
-	//Probably needs to modularize in future
+	if(rrn < 0 || rrn >= header->RRNproxRegistro) return NO_REGISTER;
 	else
 	{
 		//Pass the header
@@ -477,28 +475,12 @@ int bin_search_rrn(char *bin_filename)
 	return SUCCESS;
 }
 
-int register_remove(FILE *file, int *rrn_list)
-{
-	fseek(file, 0, SEEK_SET);
-	int i;
-	int removed = -1;
-	int aux;
-	//TODO
-	//Stupid stop condintion, fix this quickly pls
-	for(i = 0; rrn_list && rrn_list[i] != NULL; i++)
-	{
-		fseek(file, (rrn_list[i] + 1) * 128, SEEK_SET);
-		fwrite(&removed, sizeof(int), 1, file);
-	}
-	return SUCCESS;
-}
-
 int bin_remove(char *bin_filename)
 {
 	FILE *bin_file = fopen(bin_filename, "rb+");
-	fseek(bin_file, 0, SEEK_SET);
 	//Check if file is broken
 	if(!bin_file) return FILE_BROKEN;
+	fseek(bin_file, 0, SEEK_SET);
 	HEADER *header = header_read(bin_file);
 	//Check if status is ok
 	if(header->status == INCONSISTENTE) return FILE_BROKEN;
@@ -506,42 +488,240 @@ int bin_remove(char *bin_filename)
 	if(!header->numeroRegistrosInseridos) return NO_REGISTER;
 
 	header->status = INCONSISTENTE;
-	//fseek(bin_file, 0, SEEK_SET);
-	//write_binary_header(header, bin_file);
+	int aux;
+	//Change the file while inserting
+	fseek(bin_file, 0, SEEK_SET);
+	write_binary_header(header, bin_file);
 
-	int i, j;
+	int i;
+	//Number removals and number of fields of each removal
 	int n_removes, n_fields;
-	COMBINED_HEADER **ch = NULL;
-	int *rrn_list = NULL;
-	REGISTRO **reg_list = NULL;
+	COMBINED_HEADER *ch = NULL;
+	REGISTRO *reg;
+	int removed = -1;
 
 	scanf("%d", &n_removes);
-	ch = (COMBINED_HEADER **) malloc(n_removes * sizeof(COMBINED_HEADER *));
-	for(j = 0; j < n_removes; j++)
+	ch = (COMBINED_HEADER *) malloc(n_removes * sizeof(COMBINED_HEADER ));
+	for(i = 0; i < n_removes; i++)
 	{
+		aux = header->numeroRegistrosInseridos;
 		scanf("%d", &n_fields);
-		ch[j] = combined_search_create(n_fields);
-
-		for(i = 0; i < n_fields; i++)
+		ch = combined_search_create(n_fields);
+		ch = combined_search_fill(ch, n_fields);
+		fseek(bin_file, 128, SEEK_SET);
+		//While there is registers
+		while(aux--)
 		{
-			scanf(" %s", ch[j]->elem_list[i]->field_name);
-			if(!strcmp("idadeMae", ch[j]->elem_list[i]->field_name) || 
-					!strcmp("idNascimento", ch[j]->elem_list[i]->field_name))
+			reg = combined_search_register(ch, bin_file);
+			if(reg) 
 			{
-				scanf("%d", &(ch[j]->elem_list[i]->value.int_value));
-			}
-			else
-			{
-				scan_quote_string(ch[j]->elem_list[i]->value.string_value);
+				fseek(bin_file, -128, SEEK_CUR);
+				fwrite(&removed, sizeof(int), 1, bin_file);
+				fseek(bin_file, 124, SEEK_CUR);
+				header->numeroRegistrosInseridos--;
+				header->numeroRegistrosRemovidos++;
 			}
 		}
-
-		fseek(bin_file, 128, SEEK_SET);
-		reg_list = register_find(ch[j], bin_file, header, &rrn_list);
-		//if(reg_list) register_remove(bin_file, rrn_list);
 	}
 
 	header->status = OK;
+	memset(header->lixo, '$', 111);
+	//Return to the beggining of the file to write the header
+	fseek(bin_file, 0, SEEK_SET);
+	write_binary_header(header, bin_file);
+	fclose(bin_file);
+
+	return SUCCESS;
+}
+
+//Read the fields of the register in stdin and store it at the struct
+REGISTRO *read_fields()
+{
+	REGISTRO *reg = (REGISTRO *) malloc(sizeof(REGISTRO));
+	char str[MAX_LEN];
+	int aux;
+	//tamanhoCidadeMae
+	scan_quote_string(str);
+	reg->tamanhoCidadeMae = strlen(str);
+	strcpy(reg->cidadeMae, str);
+	//tamanhoCidadeBebe
+	scan_quote_string(str);
+	reg->tamanhoCidadeBebe = strlen(str);
+	strcpy(reg->cidadeBebe, str);
+	//idNascimento
+	scanf("%d", &aux);
+	reg->idNascimento = aux;
+	//idadeMae
+	scanf(" %s", str);
+	if(str[0] == 'N') reg->idadeMae = -1;
+	else reg->idadeMae = atoi(str);
+	//dataNascimento
+	memset(reg->dataNascimento, '$', 11);
+	scan_quote_string(str);
+	strcpy(reg->dataNascimento, str);
+	//sexoBebe
+	scan_quote_string(str);
+	if(!strcmp(str, "")) reg->sexoBebe = '0';
+	else reg->sexoBebe = str[0];
+	//estadoMae
+	memset(reg->estadoMae, '$', 3);
+	scan_quote_string(str);
+	strcpy(reg->estadoMae, str);
+	//estadoBebe
+	memset(reg->estadoBebe, '$', 3);
+	scan_quote_string(str);
+	strcpy(reg->estadoBebe, str);
+
+	return reg;
+}
+
+int bin_insert(char *bin_filename)
+{
+	FILE *bin_file = fopen(bin_filename, "rb+");
+	//Check if file is broken
+	if(!bin_file) return FILE_BROKEN;
+	fseek(bin_file, 0, SEEK_SET);
+	HEADER *header = header_read(bin_file);
+	//Check if status is ok
+	if(header->status == INCONSISTENTE) return FILE_BROKEN;
+	//Check if there is a valid register
+	if(!header->numeroRegistrosInseridos) return NO_REGISTER;
+
+	header->status = INCONSISTENTE;
+	int n_inserts;
+	int i;
+	REGISTRO *reg;
+	//Change the header to INCONSISTENTE
+	fseek(bin_file, 0, SEEK_SET);
+	write_binary_header(header, bin_file);
+	scanf("%d", &n_inserts);
+
+	fseek(bin_file, 0, SEEK_END);
+	for(i = 0; i < n_inserts; i++)
+	{
+		reg = read_fields();
+		write_binary(reg, bin_file);
+		header->numeroRegistrosInseridos++;
+	}
+	header->status = OK;
+	header->RRNproxRegistro = header->numeroRegistrosInseridos;
+	memset(header->lixo, '$', 111);
+	//Return to the beggining of the file to write the header
+	fseek(bin_file, 0, SEEK_SET);
+	write_binary_header(header, bin_file);
+	fclose(bin_file);
+
+	return SUCCESS;
+}
+
+int register_update(REGISTRO *reg, COMBINED_HEADER *ch, FILE *file)
+{
+	int i = 0;
+	for(i = 0; i < ch->n_fields; i++)
+	{
+		if(!strcmp("cidadeMae", ch->elem_list[i]->field_name))
+		{
+			strcpy(reg->cidadeMae, ch->elem_list[i]->value.string_value);
+			reg->tamanhoCidadeMae = strlen(reg->cidadeMae);
+		}
+		if(!strcmp("cidadeBebe", ch->elem_list[i]->field_name))
+		{
+			strcpy(reg->cidadeBebe, ch->elem_list[i]->value.string_value);
+			reg->tamanhoCidadeBebe = strlen(reg->cidadeBebe);
+		}
+		if(!strcmp("idNascimento", ch->elem_list[i]->field_name))
+		{
+			reg->idNascimento = ch->elem_list[i]->value.int_value;
+		}
+		if(!strcmp("idadeMae", ch->elem_list[i]->field_name))
+		{
+			if(ch->elem_list[i]->value.int_value == 0) reg->idadeMae = -1;
+			else reg->idadeMae = ch->elem_list[i]->value.int_value;
+		}
+		if(!strcmp("dataNascimento", ch->elem_list[i]->field_name))
+		{
+			if(strlen(ch->elem_list[i]->value.string_value) > 0) strcpy(reg->dataNascimento, ch->elem_list[i]->value.string_value);
+			else reg->dataNascimento[0] = '\0';
+		}
+		if(!strcmp("sexoBebe", ch->elem_list[i]->field_name))
+		{
+			if(strlen(ch->elem_list[i]->value.string_value) > 0) reg->sexoBebe = ch->elem_list[i]->value.string_value[0];
+			else reg->sexoBebe = '0';
+		}
+		if(!strcmp("estadoMae", ch->elem_list[i]->field_name))
+		{
+			if(strlen(ch->elem_list[i]->value.string_value) > 0) strcpy(reg->estadoMae, ch->elem_list[i]->value.string_value);
+			else reg->estadoMae[0] = '\0';
+		}
+		if(!strcmp("estadoBebe", ch->elem_list[i]->field_name))
+		{
+			if(strlen(ch->elem_list[i]->value.string_value) > 0) strcpy(reg->estadoBebe, ch->elem_list[i]->value.string_value);
+			else reg->estadoBebe[0] = '\0';
+		}
+	}
+
+	int len = 105 - (8 + reg->tamanhoCidadeMae + reg->tamanhoCidadeBebe);
+	char aux[MAX_LEN];
+	fwrite(&reg->tamanhoCidadeMae, sizeof(int), 1, file);
+	fwrite(&reg->tamanhoCidadeBebe, sizeof(int), 1, file);
+	fwrite(reg->cidadeMae, sizeof(char), reg->tamanhoCidadeMae, file);
+	fwrite(reg->cidadeBebe, sizeof(char), reg->tamanhoCidadeBebe, file);
+	while(len--) fread(&aux, sizeof(char), 1, file);
+	fwrite(&reg->idNascimento, sizeof(int), 1, file);
+	fwrite(&reg->idadeMae, sizeof(int), 1, file);
+	fwrite(reg->dataNascimento, sizeof(char), 10, file);
+	fwrite(&reg->sexoBebe, sizeof(char), 1, file);
+	fwrite(reg->estadoMae, sizeof(char), 2, file);
+	fwrite(reg->estadoBebe, sizeof(char), 2, file);
+
+	return SUCCESS;
+}
+
+int bin_update(char *bin_filename)
+{
+	FILE *bin_file = fopen(bin_filename, "rb+");
+	//Check if file is broken
+	if(!bin_file) return FILE_BROKEN;
+	fseek(bin_file, 0, SEEK_SET);
+	HEADER *header = header_read(bin_file);
+	//Check if status is ok
+	if(header->status == INCONSISTENTE) return FILE_BROKEN;
+	//Check if there is a valid register
+	if(!header->numeroRegistrosInseridos) return NO_REGISTER;
+
+	header->status = INCONSISTENTE;
+	int n_updates, n_fields;
+	int i;
+	int rrn;
+	REGISTRO *reg;
+	COMBINED_HEADER *ch;
+	//Change the header to INCONSISTENTE
+	fseek(bin_file, 0, SEEK_SET);
+	write_binary_header(header, bin_file);
+	scanf("%d", &n_updates);
+
+	for(i = 0; i < n_updates; i++)
+	{
+		scanf("%d", &rrn);
+		if(rrn < 0 || rrn >= header->RRNproxRegistro) return NO_REGISTER;
+
+		scanf("%d", &n_fields);
+		ch = combined_search_create(n_fields);
+		ch = combined_search_fill(ch, n_fields);
+
+		fseek(bin_file, (rrn + 1) * 128, SEEK_SET);
+		reg = register_read(bin_file);
+		if(reg && reg->tamanhoCidadeMae != REMOVED)
+		{
+			fseek(bin_file, -128, SEEK_CUR);
+			register_update(reg, ch, bin_file);
+			header->numeroRegistrosAtualizados++;
+		}
+
+	}
+
+	header->status = OK;
+	//Return to the beggining of the file to write the header
 	fseek(bin_file, 0, SEEK_SET);
 	write_binary_header(header, bin_file);
 	fclose(bin_file);

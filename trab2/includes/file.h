@@ -12,13 +12,17 @@ FILE *csv_open(char *);
 HEADER *header_create();
 //Function to convert a file .csv to a binary
 int csv2binary(FILE *, HEADER *, char *);
-//Function to read the binary
+//Function to print the binary registers
 int bin_print(char *bin_filename);
-//TODO
+//Function to do the combined search and print the binary registers
 int bin_search_print(char *);
-//TODO
+//Function to do the combined search and print the binary registers based on RRN
 int bin_search_rrn(char *);
-//TODO
+//Function to remove registers based on combined search results
 int bin_remove(char *);
+//Function to insert new registers at the end of the file
+int bin_insert(char *);
+//Function to update registers
+int bin_update(char *);
 
 #endif
