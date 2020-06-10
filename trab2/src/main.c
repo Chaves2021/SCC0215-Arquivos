@@ -37,14 +37,19 @@ int main(void)
 		case 3:
 			scanf(" %s", bin_filename);
 			ret = bin_search_print(bin_filename);
-			if(ret == FILE_BROKEN) printf("Falha no processamento do arquivo\n");
+			if(ret == FILE_BROKEN) printf("Falha no processamento do arquivo.\n");
 			else if(ret == NO_REGISTER) printf("Registro Inexistente.\n");
 			break;
 		case 4:
 			scanf(" %s", bin_filename);
 			ret = bin_search_rrn(bin_filename);
-			if(ret == FILE_BROKEN) printf("Falha no processamento do arquivo\n");
+			if(ret == FILE_BROKEN) printf("Falha no processamento do arquivo.\n");
 			else if(ret == NO_REGISTER) printf("Registro Inexistente.\n");
+			break;
+		case 5:
+			scanf(" %s", bin_filename);
+			if(bin_remove(bin_filename) == SUCCESS) binarioNaTela(bin_filename);
+			else printf("Falha no processamento do arquivo.\n");
 			break;
 		default:
 			break;

@@ -18,5 +18,7 @@ int bin_print(char *bin_filename);
 int bin_search_print(char *);
 //TODO
 int bin_search_rrn(char *);
+//TODO
+int bin_remove(char *);
 
 #endif

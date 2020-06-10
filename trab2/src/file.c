@@ -231,7 +231,7 @@ REGISTRO *register_read(FILE *file)
 
 	fread(&reg->tamanhoCidadeMae, sizeof(int), 1, file);
 	fread(&reg->tamanhoCidadeBebe, sizeof(int), 1, file);
-	if(reg->tamanhoCidadeMae == REMOVED) return reg;
+	if(reg->tamanhoCidadeMae == REMOVED) return NULL;
 	memset(reg->cidadeMae, '\0', 105);
 	fread(reg->cidadeMae, reg->tamanhoCidadeMae, 1, file);
 	memset(reg->cidadeBebe, '\0', 105);
@@ -366,18 +366,20 @@ int isMatch(COMBINED_ELEM *ce, REGISTRO *reg)
 	return FALSE;
 }
 
-REGISTRO **register_find(COMBINED_HEADER *ch, FILE *bin_file, HEADER *header)
+REGISTRO **register_find(COMBINED_HEADER *ch, FILE *bin_file, HEADER *header, int **rrn_list)
 {
 	int flag;
 	int i;
+	int rrn_counter = 0, counter = 0;
 	int n_registers_found = 0;
 	REGISTRO **reg_list = NULL;
 	REGISTRO *reg;
+	int aux = header->numeroRegistrosInseridos;
 
-	while(header->numeroRegistrosInseridos--)
+	while(aux--)
 	{
 		reg = register_read(bin_file);
-		if(reg->tamanhoCidadeMae != REMOVED)
+		if(reg)
 		{
 			flag = TRUE;
 			for(i  = 0; i < ch->n_fields && flag; i++)
@@ -388,7 +390,13 @@ REGISTRO **register_find(COMBINED_HEADER *ch, FILE *bin_file, HEADER *header)
 			{
 				reg_list = (REGISTRO **) realloc(reg_list, ++n_registers_found * sizeof(REGISTRO *));
 				reg_list[n_registers_found - 1] = reg;
+				if(rrn_list)
+				{
+					rrn_list[0] = (int *) realloc(rrn_list[0], ++counter * sizeof(int));
+					rrn_list[0][counter - 1] = rrn_counter;
+				}
 			}
+			rrn_counter++;
 		}
 	}
 	return reg_list;
@@ -407,7 +415,7 @@ int bin_search_print(char *bin_filename)
 
 	int n_fields;
 	int i;
-	REGISTRO **reg_list;
+	REGISTRO **reg_list = NULL;
 	COMBINED_HEADER *ch;
 
 	scanf("%d", &n_fields);
@@ -427,9 +435,12 @@ int bin_search_print(char *bin_filename)
 		}
 	}
 
-	reg_list = register_find(ch, bin_file, header);
+	reg_list = register_find(ch, bin_file, header, NULL);
 	if(reg_list)
-		for(i = 0; reg_list[i]; i++) register_print(reg_list[i]);
+		for(i = 0; reg_list[i]; i++) 
+		{
+			register_print(reg_list[i]);
+		}
 	else
 		printf("Registro Inexistente.\n");
 
@@ -453,13 +464,87 @@ int bin_search_rrn(char *bin_filename)
 	scanf("%d", &rrn);
 
 	if(rrn < 0 || rrn > header->RRNproxRegistro) return NO_REGISTER;
+	//Probably needs to modularize in future
 	else
 	{
 		//Pass the header
 		fseek(bin_file, 128 * (rrn + 1), SEEK_SET);
 		reg = register_read(bin_file);
-		if(reg->tamanhoCidadeMae == REMOVED) return NO_REGISTER;
+		if(!reg) return NO_REGISTER;
 		else register_print(reg);
 	}
+	fclose(bin_file);
+	return SUCCESS;
+}
+
+int register_remove(FILE *file, int *rrn_list)
+{
+	fseek(file, 0, SEEK_SET);
+	int i;
+	int removed = -1;
+	int aux;
+	//TODO
+	//Stupid stop condintion, fix this quickly pls
+	for(i = 0; rrn_list && rrn_list[i] != NULL; i++)
+	{
+		fseek(file, (rrn_list[i] + 1) * 128, SEEK_SET);
+		fwrite(&removed, sizeof(int), 1, file);
+	}
+	return SUCCESS;
+}
+
+int bin_remove(char *bin_filename)
+{
+	FILE *bin_file = fopen(bin_filename, "rb+");
+	fseek(bin_file, 0, SEEK_SET);
+	//Check if file is broken
+	if(!bin_file) return FILE_BROKEN;
+	HEADER *header = header_read(bin_file);
+	//Check if status is ok
+	if(header->status == INCONSISTENTE) return FILE_BROKEN;
+	//Check if there is a valid register
+	if(!header->numeroRegistrosInseridos) return NO_REGISTER;
+
+	header->status = INCONSISTENTE;
+	//fseek(bin_file, 0, SEEK_SET);
+	//write_binary_header(header, bin_file);
+
+	int i, j;
+	int n_removes, n_fields;
+	COMBINED_HEADER **ch = NULL;
+	int *rrn_list = NULL;
+	REGISTRO **reg_list = NULL;
+
+	scanf("%d", &n_removes);
+	ch = (COMBINED_HEADER **) malloc(n_removes * sizeof(COMBINED_HEADER *));
+	for(j = 0; j < n_removes; j++)
+	{
+		scanf("%d", &n_fields);
+		ch[j] = combined_search_create(n_fields);
+
+		for(i = 0; i < n_fields; i++)
+		{
+			scanf(" %s", ch[j]->elem_list[i]->field_name);
+			if(!strcmp("idadeMae", ch[j]->elem_list[i]->field_name) || 
+					!strcmp("idNascimento", ch[j]->elem_list[i]->field_name))
+			{
+				scanf("%d", &(ch[j]->elem_list[i]->value.int_value));
+			}
+			else
+			{
+				scan_quote_string(ch[j]->elem_list[i]->value.string_value);
+			}
+		}
+
+		fseek(bin_file, 128, SEEK_SET);
+		reg_list = register_find(ch[j], bin_file, header, &rrn_list);
+		//if(reg_list) register_remove(bin_file, rrn_list);
+	}
+
+	header->status = OK;
+	fseek(bin_file, 0, SEEK_SET);
+	write_binary_header(header, bin_file);
+	fclose(bin_file);
+
 	return SUCCESS;
 }
