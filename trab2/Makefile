@@ -9,7 +9,7 @@ TEST=caso.in
 all:
 	@$(CC) $(SRC) -o $(BINARY) -I$(INCLUDES)
 run:
-	@$(BINARY) < $(TEST)
+	@$(BINARY) #< $(TEST)
 clean:
 	rm trab.zip
 	rm ./bin/*
