@@ -233,7 +233,11 @@ REGISTRO *register_read(FILE *file)
 	memset(lixo, '\0', 105);
 
 	fread(&reg->tamanhoCidadeMae, sizeof(int), 1, file);
-	if(reg->tamanhoCidadeMae == REMOVED) return NULL;
+	if(reg->tamanhoCidadeMae == REMOVED) 
+	{
+		fseek(file, 124, SEEK_CUR);
+		return NULL;
+	}
 	fread(&reg->tamanhoCidadeBebe, sizeof(int), 1, file);
 	memset(reg->cidadeMae, '\0', 105);
 	fread(reg->cidadeMae, reg->tamanhoCidadeMae, 1, file);
@@ -467,7 +471,7 @@ int bin_search_rrn(char *bin_filename)
 	//Check if status is ok
 	if(header->status == INCONSISTENTE) return FILE_BROKEN;
 	//Check if there is a valid register
-	if(!header->numeroRegistrosInseridos) return NO_REGISTER;
+	//if(!header->numeroRegistrosInseridos) return NO_REGISTER;
 
 	int rrn;
 	REGISTRO *reg;
@@ -499,7 +503,7 @@ int bin_remove(char *bin_filename)
 	//Check if status is ok
 	if(header->status == INCONSISTENTE) return FILE_BROKEN;
 	//Check if there is a valid register
-	if(!header->numeroRegistrosInseridos) return NO_REGISTER;
+	//if(!header->numeroRegistrosInseridos) return NO_REGISTER;
 
 	header->status = INCONSISTENTE;
 	int aux;
@@ -507,7 +511,7 @@ int bin_remove(char *bin_filename)
 	fseek(bin_file, 0, SEEK_SET);
 	write_binary_header(header, bin_file);
 
-	int i;
+	int i, j;
 	//Number removals and number of fields of each removal
 	int n_removes, n_fields;
 	COMBINED_HEADER *ch = NULL;
@@ -516,15 +520,16 @@ int bin_remove(char *bin_filename)
 
 	scanf("%d", &n_removes);
 	ch = (COMBINED_HEADER *) malloc(n_removes * sizeof(COMBINED_HEADER ));
+	aux = header->numeroRegistrosInseridos;
 	for(i = 0; i < n_removes; i++)
 	{
-		aux = header->numeroRegistrosInseridos;
+		//aux = header->numeroRegistrosInseridos;
 		scanf("%d", &n_fields);
 		ch = combined_search_create(n_fields);
 		ch = combined_search_fill(ch, n_fields);
 		fseek(bin_file, 128, SEEK_SET);
 		//While there is registers
-		while(aux--)
+		for(j = 0; j < aux; j++)
 		{
 			reg = combined_search_register(ch, bin_file);
 			if(reg) 
@@ -546,7 +551,7 @@ int bin_remove(char *bin_filename)
 
 	fclose(bin_file);
 	free(header);
-	free(reg);
+	if(reg) free(reg);
 	combined_search_free(&ch);
 
 	return SUCCESS;
@@ -603,7 +608,7 @@ int bin_insert(char *bin_filename)
 	//Check if status is ok
 	if(header->status == INCONSISTENTE) return FILE_BROKEN;
 	//Check if there is a valid register
-	if(!header->numeroRegistrosInseridos) return NO_REGISTER;
+	//if(!header->numeroRegistrosInseridos) return NO_REGISTER;
 
 	header->status = INCONSISTENTE;
 	int n_inserts;
@@ -710,12 +715,13 @@ int bin_update(char *bin_filename)
 	//Check if status is ok
 	if(header->status == INCONSISTENTE) return FILE_BROKEN;
 	//Check if there is a valid register
-	if(!header->numeroRegistrosInseridos) return NO_REGISTER;
+	//if(!header->numeroRegistrosInseridos) return NO_REGISTER;
 
 	header->status = INCONSISTENTE;
 	int n_updates, n_fields;
 	int i;
 	int rrn;
+	int flag = FALSE;
 	REGISTRO *reg;
 	COMBINED_HEADER *ch;
 	//Change the header to INCONSISTENTE
@@ -726,19 +732,22 @@ int bin_update(char *bin_filename)
 	for(i = 0; i < n_updates; i++)
 	{
 		scanf("%d", &rrn);
-		if(rrn < 0 || rrn >= header->RRNproxRegistro) return NO_REGISTER;
-
-		scanf("%d", &n_fields);
-		ch = combined_search_create(n_fields);
-		ch = combined_search_fill(ch, n_fields);
-
-		fseek(bin_file, (rrn + 1) * 128, SEEK_SET);
-		reg = register_read(bin_file);
-		if(reg && reg->tamanhoCidadeMae != REMOVED)
+		if(rrn >= 0 && rrn < header->RRNproxRegistro)
 		{
-			fseek(bin_file, -128, SEEK_CUR);
-			register_update(reg, ch, bin_file);
-			header->numeroRegistrosAtualizados++;
+			flag = TRUE;
+
+			scanf("%d", &n_fields);
+			ch = combined_search_create(n_fields);
+			ch = combined_search_fill(ch, n_fields);
+
+			fseek(bin_file, (rrn + 1) * 128, SEEK_SET);
+			reg = register_read(bin_file);
+			if(reg && reg->tamanhoCidadeMae != REMOVED)
+			{
+				fseek(bin_file, -128, SEEK_CUR);
+				register_update(reg, ch, bin_file);
+				header->numeroRegistrosAtualizados++;
+			}
 		}
 
 	}
@@ -751,7 +760,7 @@ int bin_update(char *bin_filename)
 	fclose(bin_file);
 	free(header);
 	free(reg);
-	combined_search_free(&ch);
+	if(flag) combined_search_free(&ch);
 
 	return SUCCESS;
 }
