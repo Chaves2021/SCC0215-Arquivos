@@ -492,7 +492,6 @@ int bin_search_rrn(char *bin_filename)
 	return SUCCESS;
 }
 
-//I don't know why this function is not working, the debug message is not conclusive and i don't know how to fix it :(
 int bin_remove(char *bin_filename)
 {
 	FILE *bin_file = fopen(bin_filename, "rb+");
@@ -502,8 +501,6 @@ int bin_remove(char *bin_filename)
 	HEADER *header = header_read(bin_file);
 	//Check if status is ok
 	if(header->status == INCONSISTENTE) return FILE_BROKEN;
-	//Check if there is a valid register
-	//if(!header->numeroRegistrosInseridos) return NO_REGISTER;
 
 	header->status = INCONSISTENTE;
 	int aux;
@@ -515,7 +512,7 @@ int bin_remove(char *bin_filename)
 	//Number removals and number of fields of each removal
 	int n_removes, n_fields;
 	COMBINED_HEADER *ch = NULL;
-	REGISTRO *reg;
+	REGISTRO *reg = NULL;
 	int removed = -1;
 
 	scanf("%d", &n_removes);
