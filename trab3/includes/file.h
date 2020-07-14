@@ -1,6 +1,32 @@
 #ifndef _FILE_
 #define _FILE_
 
+struct header
+{
+	char status;
+	int RRNproxRegistro;
+	int numeroRegistrosInseridos;
+	int numeroRegistrosRemovidos;
+	int numeroRegistrosAtualizados;
+	char lixo[112];
+};
+
+struct registro
+{
+	int tamanhoCidadeMae;
+	int tamanhoCidadeBebe;
+	char cidadeMae[105];
+	char cidadeBebe[105];
+	int idNascimento;
+	int idadeMae;
+	char dataNascimento[11];
+	char sexoBebe;
+	char estadoMae[3];
+	char estadoBebe[3];
+};
+
+
+
 typedef struct registro REGISTRO;
 typedef struct header HEADER;
 typedef struct combined_search_elem COMBINED_ELEM;
@@ -24,5 +50,9 @@ int bin_remove(char *);
 int bin_insert(char *);
 //Function to update registers
 int bin_update(char *);
+//TODO
+HEADER *header_read(FILE *);
+//TODO
+REGISTRO *register_read(FILE *);
 
 #endif

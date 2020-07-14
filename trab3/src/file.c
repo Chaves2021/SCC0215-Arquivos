@@ -5,30 +5,6 @@
 #include <file.h>
 #include <binarioNaTela.h>
 
-struct header
-{
-	char status;
-	int RRNproxRegistro;
-	int numeroRegistrosInseridos;
-	int numeroRegistrosRemovidos;
-	int numeroRegistrosAtualizados;
-	char lixo[112];
-};
-
-struct registro
-{
-	int tamanhoCidadeMae;
-	int tamanhoCidadeBebe;
-	char cidadeMae[105];
-	char cidadeBebe[105];
-	int idNascimento;
-	int idadeMae;
-	char dataNascimento[11];
-	char sexoBebe;
-	char estadoMae[3];
-	char estadoBebe[3];
-};
-
 //Struct element to store the name and value of the field that is going to be used in comparison
 struct combined_search_elem
 {
