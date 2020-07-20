@@ -100,73 +100,99 @@ BTREE_PAGE *btree_page_read(FILE *file, int rrn)
 	return page;
 }
 
-BTREE_PAGE *btree_split(BTREE_PAGE *left_page, BTREE_PAGE *right_page, int key, int register_rrn)
+BTREE_PAGE *btree_split(BTREE_PAGE *page_left, BTREE_PAGE *page_right, int key, int register_rrn)
 {
 			int i;
 			int aux_key[ORDER], aux_rrn[ORDER], aux_child[ORDER + 1];
 			for(i = 0; i < ORDER - 1; i++)
 			{
-				aux_key[i] = left_page->key[i];
-				aux_rrn[i] = left_page->rrn[i];
-				aux_child[i] = left_page->child[i];
+				aux_key[i] = page_left->key[i];
+				aux_rrn[i] = page_left->rrn[i];
+				aux_child[i] = page_left->child[i];
 			}
 			//Fill the last array elements of each array aux
 			//Except of aux_child, because the last 2 array elems are not filled after the for loop
 			aux_key[i] = -1;
 			aux_rrn[i] = -1;
-			aux_child[i] = left_page->child[i];
+			aux_child[i] = page_left->child[i];
 			aux_child[i + 1] = -1;
 
-			for(i = ORDER; i > 0 && left_page->key[i - 1] > key; i--)
+			for(i = ORDER; i > 0 && page_left->key[i - 1] > key; i--)
 			{
-				aux_key[i] = left_page->key[i];
-				aux_rrn[i] = left_page->rrn[i];
-				aux_child[i + 1] = left_page->child[i];
+				aux_key[i] = page_left->key[i];
+				aux_rrn[i] = page_left->rrn[i];
+				aux_child[i + 1] = page_left->child[i];
 			}
 			aux_key[i] = key;
 			aux_rrn[i] = register_rrn;
 			aux_child[i + 1] = -1;
 
-			left_page->n = ORDER / 2;
+			page_left->n = ORDER / 2;
 			//Update the left page
 			for(i = 0; i < ORDER - 1; i++)
 			{
-				if(i < left_page->n)
+				if(i < page_left->n)
 				{
-					left_page->key[i] = aux_key[i];
-					left_page->rrn[i] = aux_rrn[i];
-					left_page->child[i] = aux_child[i];
+					page_left->key[i] = aux_key[i];
+					page_left->rrn[i] = aux_rrn[i];
+					page_left->child[i] = aux_child[i];
 				}
 				else
 				{
-					left_page->key[i] = -1;
-					left_page->rrn[i] = -1;
-					left_page->child[i] = -1;
+					page_left->key[i] = -1;
+					page_left->rrn[i] = -1;
+					page_left->child[i] = -1;
 				}
 			}
-			left_page->child[i] = -1;
+			page_left->child[i] = -1;
 
 			//Update the right page
-			right_page->n = 2;
-			right_page->nivel = 1;
+			page_right->n = 2;
+			page_right->nivel = page_left->nivel;
 			for(i = 0; i < ORDER - 1; i++)
 			{
-				if(i < right_page->n)
+				if(i < page_right->n)
 				{
-					right_page->key[i] = aux_key[i + left_page->n + 1];
-					right_page->rrn[i] = aux_rrn[i + left_page->n + 1];
-					right_page->child[i] = aux_child[i + left_page->n + 1];
+					page_right->key[i] = aux_key[i + page_left->n + 1];
+					page_right->rrn[i] = aux_rrn[i + page_left->n + 1];
+					page_right->child[i] = aux_child[i + page_left->n + 1];
 				}
 				else
 				{
-					right_page->key[i] = -1;
-					right_page->rrn[i] = -1;
-					right_page->child[i] = -1;
+					page_right->key[i] = -1;
+					page_right->rrn[i] = -1;
+					page_right->child[i] = -1;
 				}
 			}
-			right_page->child[i] = -1;
-			//TODO
-			//needs to look the header rrn and some other things
+			page_right->child[i] = -1;
+
+			BTREE_PAGE *promote = btree_page_create();
+			promote->nivel = page_left->nivel + 1;
+			promote->n = 1;
+			promote->key[0] = aux_key[ORDER / 2];
+			promote->rrn[0] = aux_rrn[ORDER / 2];
+
+			return promote;
+}
+
+int btree_no_split_insert(BTREE_HEADER *header, BTREE_PAGE *page, int key, FILE *b_file, int cur_rrn, int register_rrn)
+{
+	int i;
+	for(i = page->n; i > 0 && page->key[i - 1] > key; i--)
+	{
+		page->key[i] = page->key[i - 1];
+		page->rrn[i] = page->rrn[i - 1];
+	}
+	page->key[i] = key;
+	page->rrn[i] = register_rrn ;
+	page->n++;
+	header->nroChaves++;
+	btree_page_write(b_file, page, cur_rrn);
+	return SUCCESS;
+}
+
+int btree_no_split_insert_promote(BTREE_HEADER *header, BTREE_PAGE *page, BTREE_PAGE *promote, int key, FILE *b_file, int cur_rrn, int register_rrn)
+{
 }
 
 BTREE_PAGE *btree_index_insert(BTREE_HEADER *header, BTREE_PAGE *page, int key, FILE *b_file, int cur_rrn, int register_rrn)
@@ -175,6 +201,7 @@ BTREE_PAGE *btree_index_insert(BTREE_HEADER *header, BTREE_PAGE *page, int key, 
 	{
 		page = btree_page_create();
 		page->key[0] = key;
+		page->rrn[0] = 0;
 		page->nivel = 1;
 		page->n = 1;
 		btree_page_write(b_file, page, cur_rrn);
@@ -195,23 +222,33 @@ BTREE_PAGE *btree_index_insert(BTREE_HEADER *header, BTREE_PAGE *page, int key, 
 		//If the page is a leaf and there is space
 		if(page->nivel == 1 && page->n < ORDER - 1)
 		{
-			int i;
-			for(i = page->n; i > 0 && page->key[i - 1] > key; i--)
-			{
-				page->key[i] = page->key[i - 1];
-				page->rrn[i] = page->rrn[i - 1];
-			}
-			page->key[i] = key;
-			page->rrn[i] = register_rrn ;
-			page->n++;
-			btree_page_write(b_file, page, cur_rrn);
+			btree_no_split_insert(header, page, key, b_file, cur_rrn, register_rrn);
 			return NULL;
 		}
 		//If is a leaf, but there is no space
 		else if(page->nivel == 1)
 		{
-			BTREE_PAGE *right_page = btree_page_create();
-			btree_split(page, right_page, key, register_rrn);
+			BTREE_PAGE *page_right = btree_page_create();
+			BTREE_PAGE *promote_page = btree_split(page, page_right, key, register_rrn);
+			btree_page_write(b_file, page, cur_rrn);
+			btree_page_write(b_file, page_right, cur_rrn + 1);
+			header->proxRRN++;
+
+			header->nroChaves++;
+			return promote_page;
+		}
+		//Search for the right place to place key
+		else
+		{
+			int i;
+			for(i = 0; i < page->n && page->key[i] > key ; i++);
+			BTREE *promote = btree_index_insert(header, page, key, b_file, page->child[i], register_rrn);
+			//This case the father node already exists
+			//TODO
+			//think what to do now, when promote is not null and father node already exists
+			if(promote)
+			{
+			}
 		}
 	}
 }
@@ -239,7 +276,20 @@ int btree_index_create(char *bin_filename, char *b_filename)
 	while(bin_header->numeroRegistrosInseridos--)
 	{
 		reg = register_read(bin_file);
-		if(reg) btree_index_insert(btree_header, btree_page, reg->idNascimento, b_file, btree_header->noRaiz, register_rrn);
+		if(reg) 
+		{
+			BTREE_PAGE *promote = btree_index_insert(btree_header, btree_page, reg->idNascimento, b_file, btree_header->noRaiz, register_rrn);
+			if(promote) 
+			{
+				//This case the father node does not exists
+				promote->child[0] = btree_header->noRaiz;
+				promote->child[1] = btree_header->proxRRN;
+				btree_header->noRaiz = btree_header->proxRRN++;
+				btree_header->nroNiveis++;
+				btree_page_write(b_file, promote, btree_header->noRaiz);
+				btree_page = promote;
+			}
+		}
 		register_rrn++;
 	}
 
