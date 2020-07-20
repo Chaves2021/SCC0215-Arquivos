@@ -175,7 +175,7 @@ BTREE_PAGE *btree_split(BTREE_PAGE *page_left, BTREE_PAGE *page_right, int key, 
 			return promote;
 }
 
-int btree_no_split_insert(BTREE_HEADER *header, BTREE_PAGE *page, int key, FILE *b_file, int cur_rrn, int register_rrn)
+int btree_insert(BTREE_HEADER *header, BTREE_PAGE *page, int key, FILE *b_file, int cur_rrn, int register_rrn)
 {
 	int i;
 	for(i = page->n; i > 0 && page->key[i - 1] > key; i--)
@@ -191,8 +191,21 @@ int btree_no_split_insert(BTREE_HEADER *header, BTREE_PAGE *page, int key, FILE 
 	return SUCCESS;
 }
 
-int btree_no_split_insert_promote(BTREE_HEADER *header, BTREE_PAGE *page, BTREE_PAGE *promote, int key, FILE *b_file, int cur_rrn, int register_rrn)
+int btree_promote_insert(BTREE_HEADER *header, BTREE_PAGE *page, BTREE_PAGE *promote, FILE *b_file, int cur_rrn)
 {
+	int i;
+	for(i = page->n; i > 0 && page->key[i - 1] > promote->key[0]; i--)
+	{
+		page->key[i] = page->key[i - 1];
+		page->rrn[i] = page->rrn[i - 1];
+		page->child[i + 1] = page->child[i];
+	}
+	page->key[i] = promote->key[0];
+	page->rrn[i] = promote->rrn[0];
+	page->child[i + 1] = promote->child[0];
+	page->n++;
+	header->nroChaves++;
+	btree_page_write(b_file, page, cur_rrn);
 }
 
 BTREE_PAGE *btree_index_insert(BTREE_HEADER *header, BTREE_PAGE *page, int key, FILE *b_file, int cur_rrn, int register_rrn)
@@ -220,11 +233,7 @@ BTREE_PAGE *btree_index_insert(BTREE_HEADER *header, BTREE_PAGE *page, int key, 
 		page = btree_page_read(b_file, cur_rrn);
 
 		//If the page is a leaf and there is space
-		if(page->nivel == 1 && page->n < ORDER - 1)
-		{
-			btree_no_split_insert(header, page, key, b_file, cur_rrn, register_rrn);
-			return NULL;
-		}
+		if(page->nivel == 1 && page->n < ORDER - 1) btree_insert(header, page, key, b_file, cur_rrn, register_rrn);
 		//If is a leaf, but there is no space
 		else if(page->nivel == 1)
 		{
@@ -237,27 +246,38 @@ BTREE_PAGE *btree_index_insert(BTREE_HEADER *header, BTREE_PAGE *page, int key, 
 			header->nroChaves++;
 			return promote_page;
 		}
-		//Search for the right place to place key
+		//Search for the right place to put the key
 		else
 		{
 			int i;
 			for(i = 0; i < page->n && page->key[i] > key ; i++);
-			BTREE *promote = btree_index_insert(header, page, key, b_file, page->child[i], register_rrn);
+			BTREE_PAGE *promote = btree_index_insert(header, page, key, b_file, page->child[i], register_rrn);
 			//This case the father node already exists
-			//TODO
-			//think what to do now, when promote is not null and father node already exists
 			if(promote)
 			{
+				if(page->n < ORDER - 1) btree_promote_insert(header, page, promote, b_file, cur_rrn);
+				else
+				{
+					BTREE_PAGE *page_right = btree_page_create();
+					BTREE_PAGE *promote_page = btree_split(page, page_right, promote->key[0], register_rrn);
+					btree_page_write(b_file, page, cur_rrn);
+					btree_page_write(b_file, page_right, cur_rrn + 1);
+					header->proxRRN++;
+
+					header->nroChaves++;
+					return promote_page;
+				}
 			}
 		}
 	}
+	return NULL;
 }
 
 int btree_index_create(char *bin_filename, char *b_filename)
 {
 	FILE *bin_file = fopen("bin_filename", "rb");
 	if(!bin_file) return FILE_BROKEN;
-	FILE *b_file = fopen("b_filename", "wb");
+	FILE *b_file = fopen("b_filename", "w+b");
 	if(!b_file) 
 	{
 		fclose(bin_file);
@@ -292,6 +312,8 @@ int btree_index_create(char *bin_filename, char *b_filename)
 		}
 		register_rrn++;
 	}
+	fclose(bin_file);
+	fclose(b_file);
 
 	return SUCCESS;
 }
