@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <file.h>
 #include <binarioNaTela.h>
+#include <btree.h>
 #include <defines.h>
 
 int main(void)
@@ -12,6 +13,7 @@ int main(void)
 	HEADER *header;
 	char csv_filename[50];
 	char bin_filename[50];
+	char b_filename[50];
 	FILE *csv_file;
 	int opt; //Variable to store the option by the user
 	int ret;
@@ -63,6 +65,11 @@ int main(void)
 			if(ret != SUCCESS) printf("Falha no processamento do arquivo.\n");
 			else binarioNaTela(bin_filename);
 			break;
+		case 8:
+			scanf(" %s %s", bin_filename, b_filename);
+			ret = btree_index_create(bin_filename, b_filename);
+			if(ret != SUCCESS) printf("Falha no processamento do arquivo.\n");
+			//else binarioNaTela(b_filename);
 		default:
 			break;
 	}
