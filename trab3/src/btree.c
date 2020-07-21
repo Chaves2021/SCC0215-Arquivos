@@ -206,6 +206,7 @@ int btree_promote_insert(BTREE_HEADER *header, BTREE_PAGE *page, BTREE_PAGE *pro
 	page->n++;
 	header->nroChaves++;
 	btree_page_write(b_file, page, cur_rrn);
+	return SUCCESS;
 }
 
 BTREE_PAGE *btree_index_insert(BTREE_HEADER *header, BTREE_PAGE *page, int key, FILE *b_file, int cur_rrn, int register_rrn)
@@ -275,9 +276,9 @@ BTREE_PAGE *btree_index_insert(BTREE_HEADER *header, BTREE_PAGE *page, int key, 
 
 int btree_index_create(char *bin_filename, char *b_filename)
 {
-	FILE *bin_file = fopen("bin_filename", "rb");
+	FILE *bin_file = fopen(bin_filename, "rb");
 	if(!bin_file) return FILE_BROKEN;
-	FILE *b_file = fopen("b_filename", "w+b");
+	FILE *b_file = fopen(b_filename, "w+b");
 	if(!b_file) 
 	{
 		fclose(bin_file);
@@ -290,7 +291,7 @@ int btree_index_create(char *bin_filename, char *b_filename)
 	REGISTRO *reg;
 	int register_rrn;
 
-	btree_header->status = '0';
+	btree_header->status = INCONSISTENTE;
 	btree_header_write(b_file, btree_header);
 	register_rrn = 1;
 	while(bin_header->numeroRegistrosInseridos--)
@@ -312,6 +313,8 @@ int btree_index_create(char *bin_filename, char *b_filename)
 		}
 		register_rrn++;
 	}
+	btree_header->status = OK;
+	btree_header_write(b_file, btree_header);
 	fclose(bin_file);
 	fclose(b_file);
 

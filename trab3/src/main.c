@@ -35,8 +35,7 @@ int main(void)
 		case 2:
 			scanf(" %s", bin_filename);
 			if(bin_print(bin_filename) != SUCCESS) printf("Falha no processamento do arquivo.\n");
-			break;
-		case 3:
+			break; case 3:
 			scanf(" %s", bin_filename);
 			ret = bin_search_print(bin_filename);
 			if(ret == FILE_BROKEN) printf("Falha no processamento do arquivo.\n");
@@ -69,7 +68,7 @@ int main(void)
 			scanf(" %s %s", bin_filename, b_filename);
 			ret = btree_index_create(bin_filename, b_filename);
 			if(ret != SUCCESS) printf("Falha no processamento do arquivo.\n");
-			//else binarioNaTela(b_filename);
+			else binarioNaTela(b_filename);
 		default:
 			break;
 	}
