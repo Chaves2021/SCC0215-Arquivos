@@ -117,7 +117,7 @@ BTREE_PAGE *btree_split(BTREE_PAGE *page_left, BTREE_PAGE *page_right, int key, 
 			aux_child[i] = page_left->child[i];
 			aux_child[i + 1] = -1;
 
-			for(i = ORDER; i > 0 && page_left->key[i - 1] > key; i--)
+			for(i = ORDER - 1; i > 0 && page_left->key[i - 1] > key; i--)
 			{
 				aux_key[i] = page_left->key[i];
 				aux_rrn[i] = page_left->rrn[i];
@@ -191,6 +191,19 @@ int btree_insert(BTREE_HEADER *header, BTREE_PAGE *page, int key, FILE *b_file, 
 	return SUCCESS;
 }
 
+int debug(BTREE_HEADER *header, BTREE_PAGE *page, int key)
+{
+	printf("KEY: %d\n", key);
+
+	printf("HEADER\nstatus: %c\nnoRaiz: %d\nnroNiveis: %d\nproxRRN: %d\nnroChaves: %d\n\n",
+		header->status, header->noRaiz, header->nroNiveis, header->proxRRN, header->nroChaves);
+	printf("PAGE\nnivel: %d\nn: %d\n", page->nivel, page->n);
+	for(int i = 0; i < ORDER - 1; i++) printf("chave: %d\nrrn: %d\n", page->key[i], page->rrn[i]);
+	for(int i = 0; i < ORDER; i++) printf("child: %d\n", page->child[i]);
+	printf("-------------------------------------------------------------\n");
+	return SUCCESS;
+}
+
 int btree_promote_insert(BTREE_HEADER *header, BTREE_PAGE *page, BTREE_PAGE *promote, FILE *b_file, int cur_rrn)
 {
 	int i;
@@ -202,10 +215,10 @@ int btree_promote_insert(BTREE_HEADER *header, BTREE_PAGE *page, BTREE_PAGE *pro
 	}
 	page->key[i] = promote->key[0];
 	page->rrn[i] = promote->rrn[0];
-	page->child[i + 1] = promote->child[0];
+	page->child[i + 1] = header->proxRRN - 1;
 	page->n++;
-	header->nroChaves++;
 	btree_page_write(b_file, page, cur_rrn);
+
 	return SUCCESS;
 }
 
@@ -215,9 +228,10 @@ BTREE_PAGE *btree_index_insert(BTREE_HEADER *header, BTREE_PAGE *page, int key, 
 	{
 		page = btree_page_create();
 		page->key[0] = key;
-		page->rrn[0] = 0;
+		page->rrn[0] = register_rrn;
 		page->nivel = 1;
 		page->n = 1;
+		cur_rrn = 0;
 		btree_page_write(b_file, page, cur_rrn);
 
 		header->noRaiz = 0;
@@ -226,22 +240,28 @@ BTREE_PAGE *btree_index_insert(BTREE_HEADER *header, BTREE_PAGE *page, int key, 
 		header->proxRRN = 1;
 		btree_header_write(b_file, header);
 
+
 		return NULL;
 	}
 	else
 	{
 
 		page = btree_page_read(b_file, cur_rrn);
+		//debug(header, page, key);
 
 		//If the page is a leaf and there is space
-		if(page->nivel == 1 && page->n < ORDER - 1) btree_insert(header, page, key, b_file, cur_rrn, register_rrn);
+		if(page->nivel == 1 && page->n < ORDER - 1) 
+		{
+			btree_insert(header, page, key, b_file, cur_rrn, register_rrn);
+		}
 		//If is a leaf, but there is no space
 		else if(page->nivel == 1)
 		{
 			BTREE_PAGE *page_right = btree_page_create();
 			BTREE_PAGE *promote_page = btree_split(page, page_right, key, register_rrn);
 			btree_page_write(b_file, page, cur_rrn);
-			btree_page_write(b_file, page_right, cur_rrn + 1);
+			btree_page_write(b_file, page_right, header->proxRRN);
+
 			header->proxRRN++;
 
 			header->nroChaves++;
@@ -251,12 +271,15 @@ BTREE_PAGE *btree_index_insert(BTREE_HEADER *header, BTREE_PAGE *page, int key, 
 		else
 		{
 			int i;
-			for(i = 0; i < page->n && page->key[i] > key ; i++);
+			for(i = 0; i < page->n && page->key[i] < key ; i++);
 			BTREE_PAGE *promote = btree_index_insert(header, page, key, b_file, page->child[i], register_rrn);
 			//This case the father node already exists
 			if(promote)
 			{
-				if(page->n < ORDER - 1) btree_promote_insert(header, page, promote, b_file, cur_rrn);
+				if(page->n < ORDER - 1) 
+				{
+					btree_promote_insert(header, page, promote, b_file, cur_rrn);
+				}
 				else
 				{
 					BTREE_PAGE *page_right = btree_page_create();
@@ -293,7 +316,7 @@ int btree_index_create(char *bin_filename, char *b_filename)
 
 	btree_header->status = INCONSISTENTE;
 	btree_header_write(b_file, btree_header);
-	register_rrn = 1;
+	register_rrn = 0;
 	while(bin_header->numeroRegistrosInseridos--)
 	{
 		reg = register_read(bin_file);
@@ -304,7 +327,7 @@ int btree_index_create(char *bin_filename, char *b_filename)
 			{
 				//This case the father node does not exists
 				promote->child[0] = btree_header->noRaiz;
-				promote->child[1] = btree_header->proxRRN;
+				promote->child[1] = btree_header->proxRRN - 1;
 				btree_header->noRaiz = btree_header->proxRRN++;
 				btree_header->nroNiveis++;
 				btree_page_write(b_file, promote, btree_header->noRaiz);
