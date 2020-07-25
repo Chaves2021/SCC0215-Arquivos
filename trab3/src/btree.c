@@ -247,7 +247,7 @@ BTREE_PAGE *btree_index_insert(BTREE_HEADER *header, BTREE_PAGE *page, int key, 
 	{
 
 		page = btree_page_read(b_file, cur_rrn);
-		//debug(header, page, key);
+		debug(header, page, key);
 
 		//If the page is a leaf and there is space
 		if(page->nivel == 1 && page->n < ORDER - 1) 
@@ -285,7 +285,7 @@ BTREE_PAGE *btree_index_insert(BTREE_HEADER *header, BTREE_PAGE *page, int key, 
 					BTREE_PAGE *page_right = btree_page_create();
 					BTREE_PAGE *promote_page = btree_split(page, page_right, promote->key[0], register_rrn);
 					btree_page_write(b_file, page, cur_rrn);
-					btree_page_write(b_file, page_right, cur_rrn + 1);
+					btree_page_write(b_file, page_right, header->proxRRN);
 					header->proxRRN++;
 
 					header->nroChaves++;
