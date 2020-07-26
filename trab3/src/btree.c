@@ -247,7 +247,7 @@ BTREE_PAGE *btree_index_insert(BTREE_HEADER *header, BTREE_PAGE *page, int key, 
 	{
 
 		page = btree_page_read(b_file, cur_rrn);
-		debug(header, page, key);
+		//debug(header, page, key);
 
 		//If the page is a leaf and there is space
 		if(page->nivel == 1 && page->n < ORDER - 1) 
