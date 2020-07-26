@@ -283,12 +283,15 @@ BTREE_PAGE *btree_index_insert(BTREE_HEADER *header, BTREE_PAGE *page, int key, 
 				else
 				{
 					BTREE_PAGE *page_right = btree_page_create();
-					BTREE_PAGE *promote_page = btree_split(page, page_right, promote->key[0], register_rrn);
+					BTREE_PAGE *promote_page = btree_split(page, page_right, promote->key[0], promote->rrn[0]);
+					for(i = 0; page->child[i] != -1; i++);
+					page->child[i] = header->proxRRN - 4;
 					btree_page_write(b_file, page, cur_rrn);
+					for(i = 0; page_right->child[i] != -1; i++);
+					page_right->child[i] = header->proxRRN - 1;
 					btree_page_write(b_file, page_right, header->proxRRN);
 					header->proxRRN++;
 
-					header->nroChaves++;
 					return promote_page;
 				}
 			}
@@ -336,10 +339,12 @@ int btree_index_create(char *bin_filename, char *b_filename)
 		}
 		register_rrn++;
 	}
+
 	btree_header->status = OK;
 	btree_header_write(b_file, btree_header);
 	fclose(bin_file);
 	fclose(b_file);
+
 
 	return SUCCESS;
 }
